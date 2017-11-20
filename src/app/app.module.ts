@@ -1,5 +1,5 @@
-import { BrowserModule } from '@angular/platform-browser';
-import {Component, NgModule} from '@angular/core';
+import { BrowserModule, Title } from '@angular/platform-browser';
+import { Component, NgModule, OnInit } from '@angular/core';
 
 import {setAngularLib, UpgradeModule} from '@angular/upgrade/static';
 import * as angular from 'angular';
@@ -18,23 +18,34 @@ angularJsApp.config(($locationProvider, $routeProvider) => {
   $routeProvider.when('/a/ng1', {template: `
     ANGULARJS RENDERED a/ng1
     <div>
-      <a href="/a/ng2">ANGULAR A</a>
-      <a href="/b/ng2">ANGULAR B</a>
-      <a href="/a/ng1">ANGULARJS A</a>
-      <a href="/b/ng1">ANGULARJS B</a>
+    <a href="/">redirect to b/ng2</a>
+    <a href="/a/ng2">ANGULAR A</a>
+    <a href="/b/ng2">ANGULAR B</a>
+    <a href="/a/ng1">ANGULARJS A</a>
+    <a href="/b/ng1">ANGULARJS B</a>
     </div>
-  `});
+  `,
+   title: 'a/ng1'});
   $routeProvider.when('/b/ng1', {template: `
     ANGULARJS RENDERED b/ng1
     <div>
+      <a href="/">redirect to b/ng2</a>
       <a href="/a/ng2">ANGULAR A</a>
       <a href="/b/ng2">ANGULAR B</a>
       <a href="/a/ng1">ANGULARJS A</a>
       <a href="/b/ng1">ANGULARJS B</a>
     </div>
-  `});
+  `,
+  title: 'b/ng1'});
   $routeProvider.otherwise({template: ''}); // <---- NOTE THIS GUY
 });
+
+
+angularJsApp.run(['$rootScope', $rootScope => {
+  $rootScope.$on('$routeChangeSuccess', (event, current, previous) => {
+      document.title = current.$$route.title;
+  });
+}]);
 
 
 
@@ -50,6 +61,10 @@ angularJsApp.config(($locationProvider, $routeProvider) => {
   `
 })
 export class AppComponent {
+
+  ngOnChanges(){
+    this
+  }
 }
 
 
@@ -57,6 +72,7 @@ export class AppComponent {
   selector: 'app-angular-cmp',
   template: `ANGULAR RENDERED {{url | async}}
     <div>
+      <a routerLink="/">Redirect to b/ng2</a>
       <a routerLink="/a/ng2">ANGULAR A</a>
       <a routerLink="/b/ng2">ANGULAR B</a>
       <a routerLink="/a/ng1">ANGULARJS A</a>
@@ -64,10 +80,17 @@ export class AppComponent {
     </div>
   `
 })
-export class RoutableAngularComponent {
+export class RoutableAngularComponent implements OnInit {
   url: Observable<string> = this.route.url.map(p => p.map(s => s.path).join('/'));
 
-  constructor(private route: ActivatedRoute) {}
+  constructor(
+    private route: ActivatedRoute,
+    private titleService: Title) {}
+
+  public ngOnInit() {
+    this.titleService.setTitle(
+      this.route.snapshot.url.map(s => s.path).join('/'));
+  }
 }
 
 @Component({
@@ -95,7 +118,7 @@ export function ng1Matcher(url: UrlSegment[]) {
     BrowserModule,
     UpgradeModule,
     RouterModule.forRoot([
-      {path: '', component: RoutableAngularComponent},
+      {path: '', redirectTo: 'b/ng2', pathMatch: 'full'},
       {path: 'a/ng2', component: RoutableAngularComponent},
       {path: 'b/ng2', component: RoutableAngularComponent},
       /**
